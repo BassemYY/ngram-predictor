@@ -106,7 +106,7 @@ class Normalizer:
         """
         Apply all normalization steps in order.
         
-        Applies: lowercase → remove punctuation → remove numbers → remove whitespace.
+        Applies: lowercase -> remove punctuation -> remove numbers -> remove whitespace.
         This is the single method that other modules call to normalize text consistently.
         
         Args:
