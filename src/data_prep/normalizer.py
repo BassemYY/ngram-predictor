@@ -35,7 +35,18 @@ class Normalizer:
         Raises:
             FileNotFoundError: If folder does not exist.
         """
-        pass
+        if not os.path.isdir(folder_path):
+            raise FileNotFoundError(
+                f"Folder not found: {folder_path}. Check TRAIN_RAW_DIR in config/.env."
+            )
+        txt_files = sorted(os.listdir(folder_path))
+        all_text = []
+        for filename in txt_files:
+            if filename.endswith(".txt"):
+                filepath = os.path.join(folder_path, filename)
+                with open(filepath, "r", encoding="utf-8", errors="ignore") as f:
+                    all_text.append(f.read())
+        return "\n".join(all_text)
 
     def strip_gutenberg(self, text: str) -> str:
         """
@@ -50,7 +61,14 @@ class Normalizer:
         Returns:
             Text with headers and footers removed.
         """
-        pass
+        import re
+        # Extract only the content between each START and END marker pair
+        chunks = re.findall(
+            r"\*\*\* START OF THE PROJECT GUTENBERG EBOOK[^\*]*\*\*\*(.*?)\*\*\* END OF THE PROJECT GUTENBERG EBOOK",
+            text,
+            flags=re.DOTALL | re.IGNORECASE
+        )
+        return "\n".join(chunk.strip() for chunk in chunks)
 
     def lowercase(self, text: str) -> str:
         """
@@ -62,7 +80,7 @@ class Normalizer:
         Returns:
             Lowercased text.
         """
-        pass
+        return text.lower()
 
     def remove_punctuation(self, text: str) -> str:
         """
@@ -74,7 +92,8 @@ class Normalizer:
         Returns:
             Text with punctuation removed.
         """
-        pass
+        import re
+        return re.sub(r"[^\w\s]|_", "", text)
 
     def remove_numbers(self, text: str) -> str:
         """
@@ -86,7 +105,8 @@ class Normalizer:
         Returns:
             Text with numbers removed.
         """
-        pass
+        import re
+        return re.sub(r"\d+", "", text)
 
     def remove_whitespace(self, text: str) -> str:
         """
@@ -100,7 +120,10 @@ class Normalizer:
         Returns:
             Text with normalized whitespace.
         """
-        pass
+        import re
+        text = re.sub(r"[ \t]+", " ", text)       # collapse spaces/tabs
+        text = re.sub(r"\n\s*\n+", "\n", text)  # collapse blank lines
+        return text.strip()
 
     def normalize(self, text: str) -> str:
         """
@@ -115,7 +138,11 @@ class Normalizer:
         Returns:
             Normalized text.
         """
-        pass
+        text = self.lowercase(text)
+        text = self.remove_punctuation(text)
+        text = self.remove_numbers(text)
+        text = self.remove_whitespace(text)
+        return text
 
     def sentence_tokenize(self, text: str) -> List[str]:
         """
@@ -127,7 +154,10 @@ class Normalizer:
         Returns:
             List of sentences.
         """
-        pass
+        import nltk
+        nltk.download("punkt_tab", quiet=True)
+        sentences = nltk.sent_tokenize(text)
+        return [s.strip() for s in sentences if s.strip()]
 
     def word_tokenize(self, sentence: str) -> List[str]:
         """
@@ -139,7 +169,7 @@ class Normalizer:
         Returns:
             List of tokens separated by spaces; no empty tokens.
         """
-        pass
+        return [token for token in sentence.split() if token]
 
     def save(self, sentences: List[List[str]], filepath: str) -> None:
         """
@@ -151,16 +181,58 @@ class Normalizer:
             sentences: List of tokenized sentences (each sentence is a list of tokens).
             filepath: Path to output file.
         """
-        pass
+        os.makedirs(os.path.dirname(filepath), exist_ok=True)
+        with open(filepath, "w", encoding="utf-8") as f:
+            for tokens in sentences:
+                f.write(" ".join(tokens) + "\n")
 
 
 def main():
     """
     Entry point for Normalizer module.
     
-    Demonstrates loading, normalizing, tokenizing, and saving a corpus.
+    Runs the full data preparation pipeline: loads raw text, strips Gutenberg
+    headers/footers, sentence-tokenizes, normalizes each sentence, word-tokenizes,
+    and saves the result to the processed output file.
     """
-    print("Normalizer module initialized.")
+    import os
+    from dotenv import load_dotenv
+    load_dotenv(dotenv_path="config/.env")
+
+    train_raw_dir = os.environ.get("TRAIN_RAW_DIR", "data/raw/train/")
+    eval_raw_dir  = os.environ.get("EVAL_RAW_DIR",  "data/raw/eval/")
+    train_tokens  = os.environ.get("TRAIN_TOKENS",  "data/processed/train_tokens.txt")
+    eval_tokens   = os.environ.get("EVAL_TOKENS",   "data/processed/eval_tokens.txt")
+
+    n = Normalizer()
+
+    for label, raw_dir, out_path in [
+        ("train", train_raw_dir, train_tokens),
+        ("eval",  eval_raw_dir,  eval_tokens),
+    ]:
+        print(f"[{label}] Loading raw text from {raw_dir} ...")
+        raw = n.load(raw_dir)
+        print(f"[{label}] Raw chars: {len(raw):,}")
+
+        stripped = n.strip_gutenberg(raw)
+        print(f"[{label}] Stripped chars: {len(stripped):,}")
+
+        sentences = n.sentence_tokenize(stripped)
+        print(f"[{label}] Sentences: {len(sentences):,}")
+
+        tokenized = []
+        for sent in sentences:
+            normed = n.normalize(sent)
+            tokens = n.word_tokenize(normed)
+            if tokens:
+                tokenized.append(tokens)
+
+        total_tokens = sum(len(t) for t in tokenized)
+        print(f"[{label}] Tokenized sentences: {len(tokenized):,}  |  Total tokens: {total_tokens:,}")
+
+        n.save(tokenized, out_path)
+        print(f"[{label}] Saved → {out_path}")
+        print()
 
 
 if __name__ == "__main__":
