@@ -125,6 +125,26 @@ def run_inference():
         print()
 
 
+def run_evaluate():
+    """Compute perplexity on the held-out evaluation corpus (extra credit)."""
+    from src.model.ngram_model import NGramModel
+    from src.data_prep.normalizer import Normalizer
+    from src.evaluation.evaluator import Evaluator
+
+    model_path = os.environ.get("MODEL", "data/model/model.json")
+    vocab_path = os.environ.get("VOCAB", "data/model/vocab.json")
+    eval_tokens = os.environ.get("EVAL_TOKENS", "data/processed/eval_tokens.txt")
+
+    normalizer = Normalizer()
+    model = NGramModel()
+    model.load(model_path, vocab_path)
+    evaluator = Evaluator(model, normalizer)
+
+    print(f"[evaluate] Model loaded. Computing perplexity on {eval_tokens} ...")
+    evaluator.run(eval_tokens)
+    print()
+
+
 def main():
     """
     Main entry point.
@@ -156,6 +176,9 @@ def main():
 
     if args.step in ("model", "all"):
         run_model()
+
+    if args.step in ("evaluate", "all"):
+        run_evaluate()
 
     if args.step in ("inference", "all"):
         run_inference()
