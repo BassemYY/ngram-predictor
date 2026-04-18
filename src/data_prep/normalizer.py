@@ -93,7 +93,7 @@ class Normalizer:
             Text with punctuation removed.
         """
         import re
-        return re.sub(r"[^\w\s]|_", "", text)
+        return re.sub(r"[^\w\s]|_", " ", text)
 
     def remove_numbers(self, text: str) -> str:
         """
