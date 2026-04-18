@@ -181,16 +181,58 @@ class Normalizer:
             sentences: List of tokenized sentences (each sentence is a list of tokens).
             filepath: Path to output file.
         """
-        pass
+        os.makedirs(os.path.dirname(filepath), exist_ok=True)
+        with open(filepath, "w", encoding="utf-8") as f:
+            for tokens in sentences:
+                f.write(" ".join(tokens) + "\n")
 
 
 def main():
     """
     Entry point for Normalizer module.
     
-    Demonstrates loading, normalizing, tokenizing, and saving a corpus.
+    Runs the full data preparation pipeline: loads raw text, strips Gutenberg
+    headers/footers, sentence-tokenizes, normalizes each sentence, word-tokenizes,
+    and saves the result to the processed output file.
     """
-    print("Normalizer module initialized.")
+    import os
+    from dotenv import load_dotenv
+    load_dotenv(dotenv_path="config/.env")
+
+    train_raw_dir = os.environ.get("TRAIN_RAW_DIR", "data/raw/train/")
+    eval_raw_dir  = os.environ.get("EVAL_RAW_DIR",  "data/raw/eval/")
+    train_tokens  = os.environ.get("TRAIN_TOKENS",  "data/processed/train_tokens.txt")
+    eval_tokens   = os.environ.get("EVAL_TOKENS",   "data/processed/eval_tokens.txt")
+
+    n = Normalizer()
+
+    for label, raw_dir, out_path in [
+        ("train", train_raw_dir, train_tokens),
+        ("eval",  eval_raw_dir,  eval_tokens),
+    ]:
+        print(f"[{label}] Loading raw text from {raw_dir} ...")
+        raw = n.load(raw_dir)
+        print(f"[{label}] Raw chars: {len(raw):,}")
+
+        stripped = n.strip_gutenberg(raw)
+        print(f"[{label}] Stripped chars: {len(stripped):,}")
+
+        sentences = n.sentence_tokenize(stripped)
+        print(f"[{label}] Sentences: {len(sentences):,}")
+
+        tokenized = []
+        for sent in sentences:
+            normed = n.normalize(sent)
+            tokens = n.word_tokenize(normed)
+            if tokens:
+                tokenized.append(tokens)
+
+        total_tokens = sum(len(t) for t in tokenized)
+        print(f"[{label}] Tokenized sentences: {len(tokenized):,}  |  Total tokens: {total_tokens:,}")
+
+        n.save(tokenized, out_path)
+        print(f"[{label}] Saved → {out_path}")
+        print()
 
 
 if __name__ == "__main__":
