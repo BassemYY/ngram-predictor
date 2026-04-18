@@ -87,6 +87,44 @@ def run_model():
     print()
 
 
+def run_inference():
+    """Load model and run interactive next-word prediction CLI loop."""
+    from src.model.ngram_model import NGramModel
+    from src.data_prep.normalizer import Normalizer
+    from src.inference.predictor import Predictor
+
+    model_path = os.environ.get("MODEL", "data/model/model.json")
+    vocab_path = os.environ.get("VOCAB", "data/model/vocab.json")
+    top_k      = int(os.environ.get("TOP_K", "3"))
+
+    normalizer = Normalizer()
+    model = NGramModel()
+    model.load(model_path, vocab_path)
+    predictor = Predictor(model, normalizer)
+
+    print(f"[inference] Model loaded. Vocab size: {len(model.vocab):,}")
+    print(f"[inference] Type a phrase to get the top-{top_k} next-word predictions.")
+    print(f"[inference] Type 'quit' or press Enter on an empty line to exit.")
+    print()
+
+    while True:
+        try:
+            text = input(">>> ").strip()
+        except (EOFError, KeyboardInterrupt):
+            print()
+            break
+
+        if not text or text.lower() in ("quit", "exit"):
+            break
+
+        predictions = predictor.predict_next(text, top_k)
+        if predictions:
+            print("Predictions: " + ", ".join(predictions))
+        else:
+            print("No predictions found.")
+        print()
+
+
 def main():
     """
     Main entry point.
@@ -118,6 +156,9 @@ def main():
 
     if args.step in ("model", "all"):
         run_model()
+
+    if args.step in ("inference", "all"):
+        run_inference()
 
 
 if __name__ == "__main__":
