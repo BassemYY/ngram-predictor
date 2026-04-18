@@ -8,7 +8,7 @@ Supports saving and loading model/vocab as JSON files.
 
 import json
 import os
-from collections import Counter
+from collections import Counter, defaultdict
 from typing import Dict, List
 
 
@@ -59,7 +59,58 @@ class NGramModel:
         self.vocab_set = set(self.vocab)
 
     def build_counts_and_probabilities(self, token_file: str) -> None:
-        pass
+        """
+        Build n-gram counts at all orders and compute MLE probabilities.
+
+        Reads the tokenized file, maps rare words to <UNK>, slides a window
+        across every sentence to count all n-grams from 1-gram up to NGRAM_ORDER.
+        Computes MLE probabilities immediately after counting to avoid hidden
+        ordering bugs.
+
+        Storage format:
+            model["1gram"]  = {word: probability}
+            model["ngram"]  = {" ".join(context): {word: probability}}  for n >= 2
+
+        Args:
+            token_file: Path to tokenized file (one sentence per line).
+        """
+        if not self.vocab_set:
+            self.build_vocab(token_file)
+
+        counts_1: Counter = Counter()
+        counts_n: Dict[int, Dict[str, Counter]] = {
+            n: defaultdict(Counter) for n in range(2, self.order + 1)
+        }
+
+        with open(token_file, "r", encoding="utf-8") as f:
+            for line in f:
+                raw_tokens = line.strip().split()
+                if not raw_tokens:
+                    continue
+                tokens = [t if t in self.vocab_set else "<UNK>" for t in raw_tokens]
+
+                counts_1.update(tokens)
+
+                for n in range(2, self.order + 1):
+                    for i in range(n - 1, len(tokens)):
+                        context_key = " ".join(tokens[i - n + 1 : i])
+                        counts_n[n][context_key][tokens[i]] += 1
+
+        model: Dict[str, object] = {}
+
+        total = sum(counts_1.values())
+        model["1gram"] = {word: count / total for word, count in counts_1.items()}
+
+        for n in range(2, self.order + 1):
+            gram_key = f"{n}gram"
+            model[gram_key] = {}
+            for context_key, word_counts in counts_n[n].items():
+                total_n = sum(word_counts.values())
+                model[gram_key][context_key] = {
+                    word: count / total_n for word, count in word_counts.items()
+                }
+
+        self.model = model
 
     def lookup(self, context: List[str]) -> Dict[str, float]:
         pass
