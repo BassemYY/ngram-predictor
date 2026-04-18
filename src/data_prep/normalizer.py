@@ -35,7 +35,18 @@ class Normalizer:
         Raises:
             FileNotFoundError: If folder does not exist.
         """
-        pass
+        if not os.path.isdir(folder_path):
+            raise FileNotFoundError(
+                f"Folder not found: {folder_path}. Check TRAIN_RAW_DIR in config/.env."
+            )
+        txt_files = sorted(os.listdir(folder_path))
+        all_text = []
+        for filename in txt_files:
+            if filename.endswith(".txt"):
+                filepath = os.path.join(folder_path, filename)
+                with open(filepath, "r", encoding="utf-8", errors="ignore") as f:
+                    all_text.append(f.read())
+        return "\n".join(all_text)
 
     def strip_gutenberg(self, text: str) -> str:
         """
@@ -50,7 +61,14 @@ class Normalizer:
         Returns:
             Text with headers and footers removed.
         """
-        pass
+        import re
+        # Extract only the content between each START and END marker pair
+        chunks = re.findall(
+            r"\*\*\* START OF THE PROJECT GUTENBERG EBOOK[^\*]*\*\*\*(.*?)\*\*\* END OF THE PROJECT GUTENBERG EBOOK",
+            text,
+            flags=re.DOTALL | re.IGNORECASE
+        )
+        return "\n".join(chunk.strip() for chunk in chunks)
 
     def lowercase(self, text: str) -> str:
         """
