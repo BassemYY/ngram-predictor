@@ -113,16 +113,95 @@ class NGramModel:
         self.model = model
 
     def lookup(self, context: List[str]) -> Dict[str, float]:
-        pass
+        """
+        Backoff lookup: try highest-order context first, fall back to lower orders.
+
+        Maps any OOV context words to <UNK>, then attempts a match starting at
+        the highest possible n-gram order and stepping down to 1-gram. Returns
+        the probability distribution from the first successful match.
+
+        This is the single source of backoff logic in the project.
+
+        Args:
+            context: List of context words (last NGRAM_ORDER-1 words of input).
+
+        Returns:
+            Dict of {word: probability} from the highest-order successful match.
+            Returns empty dict if no match is found at any order.
+        """
+        if not self.model:
+            return {}
+
+        mapped = [w if w in self.vocab_set else "<UNK>" for w in context]
+
+        for n in range(self.order, 0, -1):
+            gram_key = str(n) + "gram"
+            if gram_key not in self.model:
+                continue
+
+            if n == 1:
+                return dict(self.model["1gram"])
+
+            needed = n - 1
+            context_key = " ".join(mapped[-needed:])
+            dist = self.model[gram_key].get(context_key)
+            if dist:
+                return dist
+
+        return {}
 
     def save_model(self, model_path: str) -> None:
-        pass
+        """
+        Save all probability tables to a JSON file.
+
+        Creates parent directories if they don't exist. Writes one key per
+        n-gram order (e.g. "1gram" through "4gram" for NGRAM_ORDER=4).
+
+        Args:
+            model_path: Path to output model.json file.
+        """
+        os.makedirs(os.path.dirname(model_path), exist_ok=True)
+        with open(model_path, "w", encoding="utf-8") as f:
+            json.dump(self.model, f, ensure_ascii=True)
 
     def save_vocab(self, vocab_path: str) -> None:
-        pass
+        """
+        Save the vocabulary list to a JSON file.
+
+        Args:
+            vocab_path: Path to output vocab.json file.
+        """
+        os.makedirs(os.path.dirname(vocab_path), exist_ok=True)
+        with open(vocab_path, "w", encoding="utf-8") as f:
+            json.dump(self.vocab, f, ensure_ascii=True)
 
     def load(self, model_path: str, vocab_path: str) -> None:
-        pass
+        """
+        Load model and vocabulary from JSON files.
+
+        Populates self.model, self.vocab, and self.vocab_set.
+        Called once in main() before passing the model to Predictor.
+
+        Args:
+            model_path: Path to model.json file.
+            vocab_path: Path to vocab.json file.
+
+        Raises:
+            FileNotFoundError: If model.json or vocab.json does not exist.
+        """
+        if not os.path.isfile(model_path):
+            raise FileNotFoundError(
+                "model.json not found at " + model_path + ". Run the Model module first."
+            )
+        if not os.path.isfile(vocab_path):
+            raise FileNotFoundError(
+                "vocab.json not found at " + vocab_path + ". Run the Model module first."
+            )
+        with open(model_path, "r", encoding="utf-8") as f:
+            self.model = json.load(f)
+        with open(vocab_path, "r", encoding="utf-8") as f:
+            self.vocab = json.load(f)
+        self.vocab_set = set(self.vocab)
 
 
 def main():
