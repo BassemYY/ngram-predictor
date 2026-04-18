@@ -80,7 +80,7 @@ class Normalizer:
         Returns:
             Lowercased text.
         """
-        pass
+        return text.lower()
 
     def remove_punctuation(self, text: str) -> str:
         """
@@ -92,7 +92,8 @@ class Normalizer:
         Returns:
             Text with punctuation removed.
         """
-        pass
+        import re
+        return re.sub(r"[^\w\s]|_", "", text)
 
     def remove_numbers(self, text: str) -> str:
         """
@@ -104,7 +105,8 @@ class Normalizer:
         Returns:
             Text with numbers removed.
         """
-        pass
+        import re
+        return re.sub(r"\d+", "", text)
 
     def remove_whitespace(self, text: str) -> str:
         """
@@ -118,7 +120,10 @@ class Normalizer:
         Returns:
             Text with normalized whitespace.
         """
-        pass
+        import re
+        text = re.sub(r"[ \t]+", " ", text)       # collapse spaces/tabs
+        text = re.sub(r"\n\s*\n+", "\n", text)  # collapse blank lines
+        return text.strip()
 
     def normalize(self, text: str) -> str:
         """
@@ -133,7 +138,11 @@ class Normalizer:
         Returns:
             Normalized text.
         """
-        pass
+        text = self.lowercase(text)
+        text = self.remove_punctuation(text)
+        text = self.remove_numbers(text)
+        text = self.remove_whitespace(text)
+        return text
 
     def sentence_tokenize(self, text: str) -> List[str]:
         """
@@ -145,7 +154,10 @@ class Normalizer:
         Returns:
             List of sentences.
         """
-        pass
+        import nltk
+        nltk.download("punkt_tab", quiet=True)
+        sentences = nltk.sent_tokenize(text)
+        return [s.strip() for s in sentences if s.strip()]
 
     def word_tokenize(self, sentence: str) -> List[str]:
         """
@@ -157,7 +169,7 @@ class Normalizer:
         Returns:
             List of tokens separated by spaces; no empty tokens.
         """
-        pass
+        return [token for token in sentence.split() if token]
 
     def save(self, sentences: List[List[str]], filepath: str) -> None:
         """
