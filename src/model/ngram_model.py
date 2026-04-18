@@ -205,8 +205,35 @@ class NGramModel:
 
 
 def main():
-    """Entry point for NGramModel module."""
-    print("NGramModel module initialized.")
+    """
+    Entry point for NGramModel module.
+
+    Runs the full model training pipeline standalone: builds vocab,
+    counts, probabilities, and saves model.json and vocab.json.
+    """
+    import os
+    from dotenv import load_dotenv
+    load_dotenv(dotenv_path="config/.env")
+
+    train_tokens = os.environ.get("TRAIN_TOKENS", "data/processed/train_tokens.txt")
+    model_path   = os.environ.get("MODEL",        "data/model/model.json")
+    vocab_path   = os.environ.get("VOCAB",        "data/model/vocab.json")
+
+    m = NGramModel()
+
+    print("[model] Building vocabulary from " + train_tokens + " ...")
+    m.build_vocab(train_tokens)
+    print("[model] Vocab size: " + str(len(m.vocab)) + " words")
+
+    print("[model] Building n-gram counts and probabilities (order=" + str(m.order) + ") ...")
+    m.build_counts_and_probabilities(train_tokens)
+    total_contexts = sum(len(m.model[k]) for k in m.model)
+    print("[model] Total contexts across all orders: " + str(total_contexts))
+
+    m.save_model(model_path)
+    print("[model] Saved model → " + model_path)
+    m.save_vocab(vocab_path)
+    print("[model] Saved vocab → " + vocab_path)
 
 
 if __name__ == "__main__":

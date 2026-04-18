@@ -61,10 +61,36 @@ def run_dataprep():
         print()
 
 
+def run_model():
+    """Run the model training pipeline: build vocab, counts, probabilities, save."""
+    from src.model.ngram_model import NGramModel
+
+    train_tokens = os.environ.get("TRAIN_TOKENS", "data/processed/train_tokens.txt")
+    model_path   = os.environ.get("MODEL",        "data/model/model.json")
+    vocab_path   = os.environ.get("VOCAB",        "data/model/vocab.json")
+
+    m = NGramModel()
+
+    print(f"[model] Building vocabulary from {train_tokens} ...")
+    m.build_vocab(train_tokens)
+    print(f"[model] Vocab size: {len(m.vocab):,} words")
+
+    print(f"[model] Building n-gram counts and probabilities (order={m.order}) ...")
+    m.build_counts_and_probabilities(train_tokens)
+    total_contexts = sum(len(m.model[k]) for k in m.model)
+    print(f"[model] Total contexts across all orders: {total_contexts:,}")
+
+    m.save_model(model_path)
+    print(f"[model] Saved model → {model_path}")
+    m.save_vocab(vocab_path)
+    print(f"[model] Saved vocab → {vocab_path}")
+    print()
+
+
 def main():
     """
     Main entry point.
-    
+
     Loads environment configuration, parses CLI arguments, and orchestrates
     the pipeline execution based on the --step argument.
     """
@@ -89,6 +115,9 @@ def main():
 
     if args.step in ("dataprep", "all"):
         run_dataprep()
+
+    if args.step in ("model", "all"):
+        run_model()
 
 
 if __name__ == "__main__":
