@@ -57,7 +57,7 @@ def run_dataprep():
         print(f"[{label}] Tokenized sentences: {len(tokenized):,}  |  Total tokens: {total_tokens:,}")
 
         n.save(tokenized, out_path)
-        print(f"[{label}] Saved → {out_path}")
+        print(f"[{label}] Saved - {out_path}")
         print()
 
 
@@ -81,9 +81,9 @@ def run_model():
     print(f"[model] Total contexts across all orders: {total_contexts:,}")
 
     m.save_model(model_path)
-    print(f"[model] Saved model → {model_path}")
+    print(f"[model] Saved model - {model_path}")
     m.save_vocab(vocab_path)
-    print(f"[model] Saved vocab → {vocab_path}")
+    print(f"[model] Saved vocab - {vocab_path}")
     print()
 
 
